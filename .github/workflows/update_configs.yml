@@ -2,13 +2,15 @@ name: Update Clash Configs
 
 on:
   schedule:
-    # Run every 6 hours
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write 
     
     steps:
     - uses: actions/checkout@v4
@@ -29,9 +31,12 @@ jobs:
       run: python clash_scraper.py
       
     - name: Commit and push changes
+      env:
+        REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
       run: |
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
         git add .
         git diff --quiet && git diff --staged --quiet || git commit -m "Update Clash configs [auto]"
+        git remote set-url origin $REPO_URL
         git push
