@@ -54,7 +54,8 @@ class FreeClashNodeScraper:
             # Clear old configs
             for old_file in self.output_dir.glob("*.yaml"):
                 old_file.unlink()
-
+            self.logger.info(f'获取链接')
+            self.logger.info(proxies)
             # Download new configs
             for idx, proxy in enumerate(proxies):
                 try:
