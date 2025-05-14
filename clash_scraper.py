@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from pathlib import Path
 import logging
-from typing import Optional
+from typing import Optional, List
 
 class FreeClashNodeScraper:
     def __init__(self, debug: bool = False):
@@ -49,31 +49,46 @@ class FreeClashNodeScraper:
 
             # Find all YAML config links
             proxies = soup.find_all("p", string=lambda text: text and text.strip().endswith(".yaml"))
-            self.logger.info(f"Found {len(proxies)} YAML configurations")
+            self.logger.info(f"找到 {len(proxies)} 个 YAML 配置")
 
+            v2Proxies = soup.find_all("p", string=lambda text: text and text.strip().endswith(".txt"))
+            self.logger.info(f"找到 {len(v2Proxies)} 个 V2Ray 配置")
+            
+            
             # Clear old configs
             for old_file in self.output_dir.glob("*.yaml"):
                 old_file.unlink()
-            self.logger.info(f'获取链接')
-            self.logger.info(proxies)
+            for old_file in self.output_dir.glob("*.txt"):
+                old_file.unlink()
+                
+            for idx,p in enumerate(proxies):
+                self.logger.info(f"clash {idx+1}. {p}")
+
+            for idx,p in enumerate(v2Proxies):
+                self.logger.info(f"v2ray {idx+1}. {p}")
+        
             # Download new configs
-            for idx, proxy in enumerate(proxies):
-                try:
-                    url = proxy.text.strip()
-                    self.logger.info(f"Downloading config {idx+1} from {url}")
-                    response = requests.get(url, headers=self.headers, timeout=30)
-                    response.raise_for_status()
-                    
-                    file_path = self.output_dir / f"{idx+1}.yaml"
-                    with file_path.open("wb") as f:
-                        f.write(response.content)
-                    self.logger.info(f"Saved config to {file_path}")
-                except Exception as e:
-                    self.logger.error(f"Failed to download config {idx+1}: {str(e)}")
+            self._downloadProxies(proxies, "")
+            self._downloadProxies(v2Proxies, "v")
 
         except Exception as e:
             self.logger.error(f"An error occurred: {str(e)}", exc_info=True)
 
+    def _downloadProxies(self,proxies: List[str],prefixName=""):
+        for idx, proxy in enumerate(proxies):
+            try:
+                url = proxy.text.strip()
+                self.logger.info(f"从 {url} 下载")
+                response = requests.get(url, headers=self.headers, timeout=30)
+                response.raise_for_status()
+                
+                file_path = self.output_dir / f"{prefixName}{idx+1}.yaml"
+                with file_path.open("wb") as f:
+                    f.write(response.content)
+                self.logger.info(f"下载成功 {file_path}")
+            except Exception as e:
+                self.logger.error(f"下载失败 {idx+1}: {str(e)}")
+    
     def _request_daily_proxy_page(self) -> Optional[BeautifulSoup]:
         """Request the daily proxy page."""
         if self.debug:
